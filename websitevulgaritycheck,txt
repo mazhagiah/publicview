@@ -1,0 +1,116 @@
+<?php
+if (isset($_POST['submit'])) {
+    $vulgarity = array(
+        'sex',
+        'nude',
+        'hot',
+        'Bitcoin',
+        'bitcoin',
+        'Adult',
+        'Sex',
+        'Nude',
+        'Hot',
+        'Dating',
+        'dating',
+        'Crypto',
+        'crypto',
+        'Cryptocurrency',
+        'cryptocyrrency',
+        'Chick',
+        'chick'
+    );
+    $webcont = "company";
+    $webcont .= $_POST['description'];
+    echo captchaVerify($webcont, $vulgarity);
+}
+
+function vulgarityCheck($webContent, array $checkContent)
+{
+    $allowed = 'True';
+    if (! is_array($checkContent))
+        $checkContent = array(
+            $checkContent
+        );
+    foreach ($checkContent as $content) {
+        if (($pos = strpos($webContent, $content)) != false) {
+            $allowed = 'False';
+        }
+    }
+
+    return $allowed;
+}
+
+function redirect($isAllowed)
+{
+    if ($isAllowed == 'False') {
+        $to = "maharaja.azhagiah@company.com";
+        $from = "info@company.com";
+        $subject = "Vulgarity Found";
+        $message = "Description: " . $_POST['description'] . "IP Address: " . $_SERVER['REMOTE_ADDR'];
+        $headers = "From:" . $from;
+        mail($to, $subject, $message, $headers);
+        header('Location: https://www.company.com');
+    } else {
+
+        $url = 'http://crm.company.com/modules/Webforms/capture.php';
+
+        // what post fields?
+        $fields = array(
+            'firstname' => $_POST['firstname'],
+            'lastname' => $_POST['lastname'],
+            'email' => $_POST['email'],
+            'phone' => $_POST['phone'],
+            'description' => $_POST['description'],
+            'name' => 'company Test'
+        );
+
+        // build the urlencoded data
+        $postvars = http_build_query($fields);
+
+        // open connection
+        $ch = curl_init();
+
+        // set the url, number of POST vars, POST data
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, count($fields));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postvars);
+
+        // execute post
+        $result = curl_exec($ch);
+
+        // close connection
+        curl_close($ch);
+        header('Location: https://www.company.com');
+    }
+}
+
+function captchaVerify($webcont, $vulgarity)
+{
+    $post_data = http_build_query(array(
+        'secret' => 'Google Captacha Secret',
+        'response' => $_POST['g-recaptcha-response'], #Google captacha response from HTML Form
+        'remoteip' => $_SERVER['REMOTE_ADDR']
+    ));
+    $opts = array(
+        'http' => array(
+            'method' => 'POST',
+            'header' => 'Content-type: application/x-www-form-urlencoded',
+            'content' => $post_data
+        )
+    );
+    $context = stream_context_create($opts);
+    $response = file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
+    $result = json_decode($response);
+    if (! $result->success) {
+        $to = "maharaja.azhagiah@company.com";
+        $from = "info@company.com";
+        $subject = "Captcha Failure";
+        $message = "Description: " . $_POST['description'] . "IP Address: " . $_SERVER['REMOTE_ADDR'];
+        $headers = "From:" . $from;
+        mail($to, $subject, $message, $headers);
+    } else {
+        $allowed = vulgarityCheck($webcont, $vulgarity);
+        echo redirect($allowed);
+    }
+}
+?>
